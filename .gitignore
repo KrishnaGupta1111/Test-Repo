@@ -1,0 +1,15 @@
+# ========== FRONTEND ==========
+client/node_modules/
+client/.env
+client/build/
+
+# ========== Common ========== 
+.env
+.DS_Store
+Thumbs.db
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.vscode/
+.idea/
