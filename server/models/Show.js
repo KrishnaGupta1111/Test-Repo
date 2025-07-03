@@ -1,8 +1,8 @@
-import mongoose from "mongoose";
+import mongoose, { mongo } from "mongoose";
 
 const showSchema=new mongoose.Schema(
     {
-        movie:{type:String,required:true,ref:'Movie'},
+        movie:{type:mongoose.Schema.Types.ObjectId,required:true,ref:'Movie'},
         showDateTime:{type:Date,required:true},
         showPrice:{type:Number,required:true},
         occupiedSeats:{type:Object,default:{}}
