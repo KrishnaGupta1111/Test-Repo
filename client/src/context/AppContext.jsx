@@ -4,7 +4,7 @@ import { useAuth, useUser } from "@clerk/clerk-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 
-axios.defaults.baseURL=import.meta.env.VITE_BSE_URL
+axios.defaults.baseURL=import.meta.env.VITE_BASE_URL
 
 
 export const AppContext=createContext()
@@ -14,8 +14,10 @@ export const AppProvider=({children})=>{
     const [isAdmin , setIsAdmin]=useState(false)
     const[shows,setShows]=useState([])
     const [favoriteMovies,setFavoriteMovies]=useState([]) 
+
+    const image_base_url = import.meta.env.VITE_TMDB_IMAGE_BASE_URL;
     
-    const {user}=useUser()
+    const { user }= useUser()
     const {getToken}=useAuth()
     const location =useLocation()
     const navigate=useNavigate()
@@ -64,7 +66,7 @@ export const AppProvider=({children})=>{
 
     useEffect(()=>{
         fetchShows()
-    })
+    },[])
 
     useEffect(()=>{
         if(user){
@@ -79,7 +81,7 @@ export const AppProvider=({children})=>{
         user,
         getToken,
         navigate,
-        isAdmin,shows,favoriteMovies,fetchFavoriteMovies
+        isAdmin,shows,favoriteMovies,fetchFavoriteMovies,image_base_url
 
     }
 

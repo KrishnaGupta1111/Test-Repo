@@ -1,10 +1,7 @@
-//API to check if user is admin
-
-
 import Booking from "../models/Booking.js";
 import Show from "../models/Show.js";
 
-export const isAdmin=async(req,res)=>{
+export const isAdmin = async(req,res)=>{
     res.json({success:true,isAdmin:true})
 }
 
