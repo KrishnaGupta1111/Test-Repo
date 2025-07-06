@@ -21,11 +21,11 @@ export const stripeWebhooks = async(request,response)=>{
             })
 
             const session=sessionList.data[0];
-            const {bookingId}=session.metadata;
+            const { bookingId }=session.metadata;
 
             await Booking.findByIdAndUpdate(bookingId,{
-                isPaid:true.valueOf,
-                paymentLink:""
+                isPaid:true,
+                paymentLink:" "
             })
             break;
             }
@@ -35,7 +35,7 @@ export const stripeWebhooks = async(request,response)=>{
                 console.log('Unhandled event type:',event.type)
         }
         response.json({received:true})
-    } catch (error) {
+    } catch (err) {
         console.error('Webhook processing error:',err);
         response.status(500).send("Internal Server Error");
     }
