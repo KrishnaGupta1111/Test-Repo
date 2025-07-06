@@ -27,8 +27,10 @@ const ListBookings = () => {
   };
 
   useEffect(()=>{
+    if(user){
     getAllBookings();
-  },[])
+    }
+  },[user])
 
   return !isLoading ? (
    <>

@@ -6,6 +6,7 @@ import { ArrowRight, ArrowRightIcon, ClockIcon, TableRowsSplit } from 'lucide-re
 import isoTimeFormat from '../lib/isoTimeFormat';
 import BlurCircle from '../components/BlurCircle';
 import toast from 'react-hot-toast';
+import { useAppContext } from '../context/AppContext';
 
 const SeatLayout = () => {
 
@@ -17,6 +18,8 @@ const SeatLayout = () => {
   const [show,setShow]=useState(null)
 
   const navigate=useNavigate();
+
+  const {axios,getToken,user}=useAppContext()
 
   const getShow=async()=>{
     const show = dummyShowsData.find(show=>show._id===id)
