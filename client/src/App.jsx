@@ -16,6 +16,7 @@ import ListBookings from "./pages/admin/ListBookings";
 import Dashboard from "./pages/admin/Dashboard";
 import { useAppContext } from "./context/AppContext";
 import { SignIn } from "@clerk/clerk-react";
+import Loading from "./components/Loading";
 
 
 
@@ -35,6 +36,8 @@ const App = () => {
         <Route path="/movies/:id" element={<MovieDetails />} />
         <Route path="/movies/:id/:date" element={<SeatLayout />} />
         <Route path="/my-bookings" element={<MyBookings />} />
+        <Route path="/loading/:nextUrl" element={<Loading/>} />
+
         <Route path="favorite" element={<Favorite />} />
 
         <Route path='/admin/*' element={ user ? <Layout/> : (
