@@ -1,5 +1,6 @@
 import { Inngest } from "inngest";
 import User from "../models/User.js"
+import Booking from "../models/Booking.js";
 
 // Create a client to send and receive events
 export const inngest = new Inngest({ id: "movie-ticket-booking" });
@@ -63,6 +64,20 @@ const releaseSeatsAndDeleteBooking=inngest.createFunction(
               await Booking.findByIdAndDelete(booking._id)
             }
         })
+    }
+)
+
+//Inngest function to send email when user books a show
+
+const sendBookingConfirmationEmail=inngest.createFunction(
+    {id:"send-booking-confirmation-email"},
+    {event:"app/show.booked"},
+    async({event,step})=>{
+        const {bookingId}=event.data;
+        const booking = await Booking.findById(bookingId).populate({
+            path:'show',
+            populate:{path:"movie",model:"Movie"}
+        }).populate('user');
     }
 )
 
