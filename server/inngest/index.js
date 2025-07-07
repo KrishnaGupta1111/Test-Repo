@@ -1,6 +1,8 @@
 import { Inngest } from "inngest";
 import User from "../models/User.js"
 import Booking from "../models/Booking.js";
+import Show from "../models/Show.js";
+import sendEmail from "../configs/nodeMailer.js";
 
 // Create a client to send and receive events
 export const inngest = new Inngest({ id: "movie-ticket-booking" });
@@ -56,7 +58,7 @@ const releaseSeatsAndDeleteBooking=inngest.createFunction(
 
         await step.run('check-payment-status',async()=>{
             const bookingId=event.data.bookingId;
-            const booking=await Booking.findByiD(bookingId)
+            const booking=await Booking.findById(bookingId)
 
             if(!booking.isPaid){
               show.markModified('occupiedSeats')
@@ -78,6 +80,27 @@ const sendBookingConfirmationEmail=inngest.createFunction(
             path:'show',
             populate:{path:"movie",model:"Movie"}
         }).populate('user');
+
+        await sendEmail({
+            to: booking.user.email,
+            subject:`Payment Confirmation:  "${booking.show.movie.title}" booked!`,
+            body: `
+  <h2>🎉 Booking Confirmed!</h2>
+  <p>Hello ${booking.user.name},</p>
+
+  <p>Your booking for <strong>${booking.show.movie.title}</strong> is confirmed.</p>
+
+  <p><strong>Date & Time:</strong> ${new Date(booking.show.showDateTime).toLocaleString()}</p>
+  <p><strong>Seats:</strong> ${booking.bookedSeats.join(", ")}</p>
+  <p><strong>Tickets:</strong> ${booking.bookedSeats.length}</p>
+  <p><strong>Total Paid:</strong> $${booking.amount}</p>
+
+  <p>Thank you for booking with us. Enjoy your movie! 🍿</p>
+
+  <p>- MovieBooking Team</p>
+`
+
+        })
     }
 )
 
@@ -85,6 +108,7 @@ export const functions = [
     syncUserCreation,
     syncUserDeletion,
     syncUserUpdation,
-    releaseSeatsAndDeleteBooking
+    releaseSeatsAndDeleteBooking,
+    sendBookingConfirmationEmail
 
 ];
