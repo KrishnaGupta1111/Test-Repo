@@ -104,7 +104,7 @@ const Dashboard = () => {
               <p className="text-lg font-medium">{currency}{show.showPrice}</p>
               <p className="flex items-center gap-1 text-sm text-gray-400 mt-1 pr-1">
                 <StarIcon className="w-4 h-4 text-primary fill-primary"/>
-                {show.movie.vote_average.toFixed(1)}
+                {Number(show.movie.vote_average).toFixed(1)}
               </p>
 
             </div>
