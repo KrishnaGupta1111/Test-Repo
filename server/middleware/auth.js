@@ -14,6 +14,6 @@ export const protectAdmin = async(req,res,next)=>{
         }
         next();
     } catch (error) {
-        return res.json({success:false,message:"not authorized"})
+       return res.json({success:false,message:"not authorized"})
     }
 }
