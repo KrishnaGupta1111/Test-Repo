@@ -3,6 +3,7 @@ import Booking from "../models/Booking.js";
 import { inngest } from "../inngest/index.js";
 
 export const stripeWebhooks = async (request, response) => {
+  console.log("Stripe webhook endpoint hit");
   // 🧪 Debug: Check if webhook is hit
   console.log("🎯 Webhook endpoint hit");
   console.log("Stripe-Signature:", request.headers["stripe-signature"]);
