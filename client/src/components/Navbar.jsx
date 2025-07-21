@@ -56,15 +56,6 @@ const Navbar = () => {
           }}
           to="/"
         >
-          Theaters
-        </Link>
-        <Link
-          onClick={() => {
-            scrollTo(0, 0);
-            setIsOpen(false);
-          }}
-          to="/"
-        >
           Releases
         </Link>
         <Link
