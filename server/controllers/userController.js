@@ -34,13 +34,6 @@ export const updateFavorite = async (req, res) => {
     const movie = await getOrCreateMovie(movieId);
     const internalMovieId = movie._id;
 
-    // Validate internalMovieId is a valid ObjectId
-    if (!mongoose.Types.ObjectId.isValid(internalMovieId)) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Invalid movie ID" });
-    }
-
     const user = await clerkClient.users.getUser(userId);
 
     if (!user.privateMetadata.favorites) {
