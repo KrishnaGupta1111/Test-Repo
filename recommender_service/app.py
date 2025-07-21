@@ -7,9 +7,9 @@ import numpy as np
 
 app = Flask(__name__)
 
-# Use the provided MongoDB Atlas connection string and set the database name
-MONGO_URI = 'mongodb+srv://krishna:krishna1947@cluster0.bobnhs8.mongodb.net'
-DB_NAME = 'quickshow'
+# Use environment variables for MongoDB connection
+MONGO_URI = os.environ.get('MONGO_URI')
+DB_NAME = os.environ.get('DB_NAME', 'quickshow')
 
 client = MongoClient(MONGO_URI)
 db = client[DB_NAME]
