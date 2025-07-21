@@ -2,6 +2,8 @@ import { clerkClient } from "@clerk/express";
 import Booking from "../models/Booking.js";
 import Movie from "../models/Movie.js";
 import User from "../models/User.js";
+import mongoose from "mongoose";
+import { getOrCreateMovie } from "./showController.js"; // Import the new function
 
 //API Controller Function to Get User Bookings
 export const getUserBookings = async (req, res) => {
@@ -28,26 +30,48 @@ export const updateFavorite = async (req, res) => {
     const { movieId } = req.body;
     const userId = req.auth().userId;
 
+    // Ensure the movie exists in our DB and get its internal _id
+    const movie = await getOrCreateMovie(movieId);
+    const internalMovieId = movie._id;
+
+    // Validate internalMovieId is a valid ObjectId
+    if (!mongoose.Types.ObjectId.isValid(internalMovieId)) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid movie ID" });
+    }
+
     const user = await clerkClient.users.getUser(userId);
 
     if (!user.privateMetadata.favorites) {
       user.privateMetadata.favorites = [];
     }
 
+    const mongoUser = await User.findById(userId);
+    if (!mongoUser) {
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found." });
+    }
+
     let updatedFavorites;
-    if (!user.privateMetadata.favorites.includes(movieId)) {
-      user.privateMetadata.favorites.push(movieId);
-      // Also add to MongoDB User favorites
+    const isFavorite = mongoUser.favorites.includes(internalMovieId);
+
+    if (!isFavorite) {
+      // Add to favorites
+      user.privateMetadata.favorites.push(internalMovieId.toString());
       await User.findByIdAndUpdate(userId, {
-        $addToSet: { favorites: movieId },
+        $addToSet: { favorites: internalMovieId },
       });
       updatedFavorites = user.privateMetadata.favorites;
     } else {
+      // Remove from favorites
       user.privateMetadata.favorites = user.privateMetadata.favorites.filter(
-        (item) => item !== movieId
+        (item) => item !== internalMovieId.toString()
       );
-      // Also remove from MongoDB User favorites
-      await User.findByIdAndUpdate(userId, { $pull: { favorites: movieId } });
+      await User.findByIdAndUpdate(userId, {
+        $pull: { favorites: internalMovieId },
+      });
       updatedFavorites = user.privateMetadata.favorites;
     }
 
