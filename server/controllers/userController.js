@@ -128,9 +128,10 @@ export const getRecommendations = async (req, res) => {
     let recommendedMovieIds = [];
     let recommendedMovies = [];
     try {
-      const pyRes = await axios.post("http://localhost:5001/recommend", {
-        userMovieIds,
-      });
+      const pyRes = await axios.post(
+        "https://test-repo-tenn.onrender.com/recommend",
+        { userMovieIds }
+      );
       recommendedMovieIds = pyRes.data.recommendedMovieIds || [];
       // Fetch full movie details for the recommended IDs
       if (recommendedMovieIds.length > 0) {
