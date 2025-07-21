@@ -83,6 +83,24 @@ export const AppProvider = ({ children }) => {
     }
   };
 
+  // Fetch recommended movies for the user
+  const fetchRecommendedMovies = async () => {
+    try {
+      const { data } = await axios.get("/api/user/recommendations", {
+        headers: { Authorization: `Bearer ${await getToken()}` },
+      });
+      if (data.success) {
+        return data.recommendedMovies;
+      } else {
+        toast.error(data.message || "Failed to fetch recommendations");
+        return [];
+      }
+    } catch (error) {
+      toast.error("Failed to fetch recommendations");
+      return [];
+    }
+  };
+
   useEffect(() => {
     fetchShows();
   }, []);
@@ -93,6 +111,14 @@ export const AppProvider = ({ children }) => {
       fetchFavoriteMovies();
     }
   }, [user]);
+
+  useEffect(() => {
+    // Debug: Log Clerk session token to console
+    (async () => {
+      const token = await getToken();
+      console.log("Clerk session token:", token);
+    })();
+  }, [user, getToken]);
 
   const value = {
     axios,
@@ -106,6 +132,7 @@ export const AppProvider = ({ children }) => {
     fetchFavoriteMovies,
     image_base_url,
     toggleFavorite, // Add this to context
+    fetchRecommendedMovies,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

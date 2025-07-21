@@ -4,6 +4,7 @@ import Movie from "../models/Movie.js";
 import User from "../models/User.js";
 import mongoose from "mongoose";
 import { getOrCreateMovie } from "./showController.js"; // Import the new function
+import axios from "axios";
 
 //API Controller Function to Get User Bookings
 export const getUserBookings = async (req, res) => {
@@ -94,5 +95,65 @@ export const getFavorites = async (req, res) => {
   } catch (error) {
     console.log(error.message);
     res.json({ success: false, message: error.message });
+  }
+};
+
+export const getRecommendations = async (req, res) => {
+  try {
+    console.log("req.auth():", req.auth && req.auth()); // Debug log
+    const userId = req.auth().userId;
+    console.log("userId from token:", userId); // Debug log
+    const user = await User.findById(userId);
+    if (!user) {
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found in database." });
+    }
+    const favoriteIds = user.favorites || [];
+
+    // Fetch bookings and populate show
+    const bookings = await Booking.find({ user: userId }).populate({
+      path: "show",
+      select: "movie",
+    });
+    // Extract booked movie IDs
+    const bookedMovieIds = bookings
+      .map((b) => b.show && b.show.movie)
+      .filter(Boolean);
+
+    // Combine and deduplicate
+    const userMovieIds = [...new Set([...favoriteIds, ...bookedMovieIds])];
+
+    // Call Python microservice for recommendations
+    let recommendedMovieIds = [];
+    let recommendedMovies = [];
+    try {
+      const pyRes = await axios.post("http://localhost:5001/recommend", {
+        userMovieIds,
+      });
+      recommendedMovieIds = pyRes.data.recommendedMovieIds || [];
+      // Fetch full movie details for the recommended IDs
+      if (recommendedMovieIds.length > 0) {
+        recommendedMovies = await Movie.find({
+          _id: { $in: recommendedMovieIds },
+        });
+        // Sort movies in the same order as recommendedMovieIds
+        const movieMap = Object.fromEntries(
+          recommendedMovies.map((m) => [m._id.toString(), m])
+        );
+        recommendedMovies = recommendedMovieIds
+          .map((id) => movieMap[id])
+          .filter(Boolean);
+      }
+    } catch (err) {
+      console.error(
+        "Error calling Python recommender or fetching movies:",
+        err.message
+      );
+    }
+
+    res.json({ success: true, recommendedMovies });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
   }
 };
