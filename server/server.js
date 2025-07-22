@@ -32,7 +32,12 @@ app.post("/api/test", (req, res) => {
 
 //Middleware
 app.use(express.json());
-app.use(cors());
+app.use(
+  cors({
+    origin: ["https://cinebookk.vercel.app", "http://localhost:5173"],
+    credentials: true,
+  })
+);
 app.use(clerkMiddleware());
 
 //API Routes
