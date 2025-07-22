@@ -45,15 +45,16 @@ const Recommended = () => {
       <BlurCircle bottom="50px" right="50px" />
       <h1 className="text-lg font-medium my-4">Recommended For You</h1>
       <div className="flex flex-wrap max-sm:justify-center gap-8">
-        {recommended.map((movie) => (
-          <div key={movie._id} className="flex flex-col items-center">
-            <MovieCard movie={movie} />
-            {/* Placeholder for 'Why recommended?' explanation */}
-            <span className="text-xs text-gray-400 mt-2 italic">
-              Because you liked similar movies
-            </span>
-          </div>
-        ))}
+        {recommended.map((movie) =>
+          movie && movie._id ? (
+            <div key={movie._id} className="flex flex-col items-center">
+              <MovieCard movie={movie} />
+              <span className="text-xs text-gray-400 mt-2 italic">
+                Because you liked similar movies
+              </span>
+            </div>
+          ) : null
+        )}
       </div>
     </div>
   ) : (

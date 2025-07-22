@@ -35,17 +35,9 @@ const AddShows = () => {
 
   const fetchBollywoodMovies = async () => {
     try {
-      const { data } = await axios.get(
-        `https://api.themoviedb.org/3/discover/movie`,
-        {
-          params: {
-            api_key: import.meta.env.VITE_TMDB_API_KEY,
-            with_original_language: "hi",
-            sort_by: "popularity.desc",
-            page: 1,
-          },
-        }
-      );
+      // Debug: Log the TMDB API key being used
+      // console.log("TMDB KEY:", import.meta.env.VITE_TMDB_API_KEY);
+      const { data } = await axios.get("/api/tmdb/bollywood");
       setBollywoodMovies(data.results || []);
     } catch (error) {
       console.error("Error fetching Bollywood movies:", error);
@@ -56,15 +48,11 @@ const AddShows = () => {
     e.preventDefault();
     if (!searchQuery) return;
     try {
-      const { data } = await axios.get(
-        `https://api.themoviedb.org/3/search/movie`,
-        {
-          params: {
-            api_key: import.meta.env.VITE_TMDB_API_KEY,
-            query: searchQuery,
-          },
-        }
-      );
+      const { data } = await axios.get("/api/tmdb/search", {
+        params: {
+          query: searchQuery,
+        },
+      });
       setSearchResults(data.results || []);
     } catch (error) {
       console.error("Error searching movies:", error);

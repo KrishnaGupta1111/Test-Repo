@@ -5,8 +5,10 @@ import BlurCircle from "../components/BlurCircle";
 import { useAppContext } from "../context/AppContext";
 
 const Favorite = () => {
+  const { favoriteMovies, shows } = useAppContext();
 
-  const {favoriteMovies}=useAppContext();
+  // Create a Set of movie IDs that have active shows
+  const showMovieIds = new Set(shows.map((m) => m._id));
 
   return favoriteMovies.length > 0 ? (
     <div className="relative my-40 mb-60 px-6 md:px-16 lg:px-40 xl:px-44 overflow-hidden min-h-[80vh]">
@@ -16,7 +18,12 @@ const Favorite = () => {
       <h1 className="text-lg font-medium my-4">Your Favorite Movies</h1>
       <div className="flex flex-wrap max-sm:justify-center gap-8">
         {favoriteMovies.map((movie) => (
-          <MovieCard movie={movie} key={movie._id} />
+          <MovieCard
+            movie={
+              showMovieIds.has(movie._id) ? { ...movie, hasShow: true } : movie
+            }
+            key={movie._id}
+          />
         ))}
       </div>
     </div>

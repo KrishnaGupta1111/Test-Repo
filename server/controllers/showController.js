@@ -111,9 +111,18 @@ export const getShows = async (req, res) => {
       .populate("movie")
       .sort({ showDateTime: 1 });
 
-    const uniqueShows = new Set(shows.map((show) => show.movie));
+    // Unique movies with at least one active show
+    const movieMap = new Map();
+    shows.forEach((show) => {
+      if (show.movie && !movieMap.has(show.movie._id.toString())) {
+        movieMap.set(show.movie._id.toString(), {
+          ...(show.movie.toObject?.() || show.movie),
+          hasShow: true,
+        });
+      }
+    });
 
-    res.json({ success: true, shows: Array.from(uniqueShows) });
+    res.json({ success: true, shows: Array.from(movieMap.values()) });
   } catch (error) {
     console.log(error);
     res.json({ success: false, message: error.message });

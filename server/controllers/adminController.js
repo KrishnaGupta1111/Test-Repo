@@ -70,7 +70,7 @@ export const fetchBollywoodMovies = async (req, res) => {
       "https://api.themoviedb.org/3/discover/movie",
       {
         params: {
-          api_key: process.env.TMDB_API_KEY,
+          api_key: process.env.TMDB_API_KEY_V3, // Use v3 key here
           with_original_language: "hi",
           sort_by: "popularity.desc",
           page: 1, // You can loop through more pages if you want more movies

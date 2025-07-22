@@ -1,16 +1,25 @@
 import { Star, StarIcon, Heart, HeartIcon } from "lucide-react";
 import React from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import timeFormat from "../lib/timeFormat";
 import { useAppContext } from "../context/AppContext";
 
 const MovieCard = ({ movie }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { image_base_url, favoriteMovies, toggleFavorite, user } =
     useAppContext();
 
+  // Force hasShow true for all movies in the Movies (Now Showing) page
+  const hasShow =
+    location.pathname === "/movies"
+      ? true
+      : movie.hasShow !== undefined
+        ? movie.hasShow
+        : false;
+
   return (
-    <div className="flex flex-col justify-between p-3 bg-gray-800 rounded-2xl hover:translate-y-1 transition duration-300 w-66">
+    <div className="flex flex-col justify-between p-2 bg-gray-800 rounded-2xl shadow-md hover:translate-y-1 transition duration-300 w-[112%] mx-auto mb-4 sm:w-66 border border-gray-700">
       <img
         onClick={() => {
           navigate(`/movies/${movie._id}`);
@@ -18,12 +27,14 @@ const MovieCard = ({ movie }) => {
         }}
         src={image_base_url + movie.backdrop_path}
         alt=""
-        className="rounded-lg h-52 w-full object-cover object-right-bottom cursor-pointer"
+        className="rounded-xl w-full aspect-[3/4] object-cover object-center cursor-pointer bg-black"
       />
 
-      <p className="font-semibold mt-2 truncate">{movie.title}</p>
+      <p className="font-semibold mt-2 truncate text-base sm:text-lg">
+        {movie.title}
+      </p>
 
-      <p className="text-sm text-gray-400 mt-2">
+      <p className="text-xs text-gray-400 mt-1 mb-2">
         {new Date(movie.release_date).getFullYear()} •{" "}
         {movie.genres
           .slice(0, 2)
@@ -32,16 +43,26 @@ const MovieCard = ({ movie }) => {
         • {timeFormat(movie.runtime)}
       </p>
 
-      <div className="flex items-center justify-between mt-4 pb-3">
-        <button
-          onClick={() => {
-            navigate(`/movies/${movie._id}`);
-            scrollTo(0, 0);
-          }}
-          className="px-4 py-2 text-xs bg-primary hover:bg-primary-dull transition rounded-full font-medium cursor-pointer"
-        >
-          Buy Tickets
-        </button>
+      <div className="flex items-center justify-between mt-auto pt-2 pb-1">
+        {hasShow ? (
+          <button
+            onClick={() => {
+              navigate(`/movies/${movie._id}`);
+              scrollTo(0, 0);
+            }}
+            className="px-4 py-2 text-xs bg-primary hover:bg-primary-dull transition rounded-full font-medium cursor-pointer"
+          >
+            Book Ticket
+          </button>
+        ) : (
+          <button
+            disabled
+            className="px-4 py-2 text-xs bg-gray-600 text-gray-300 rounded-full font-medium cursor-not-allowed opacity-70"
+            title="Coming Soon"
+          >
+            Coming Soon
+          </button>
+        )}
         <div className="flex items-center gap-2">
           <button
             onClick={() => {

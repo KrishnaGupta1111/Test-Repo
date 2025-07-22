@@ -5,6 +5,7 @@ import User from "../models/User.js";
 import mongoose from "mongoose";
 import { getOrCreateMovie } from "./showController.js"; // Import the new function
 import axios from "axios";
+import Show from "../models/Show.js";
 
 //API Controller Function to Get User Bookings
 export const getUserBookings = async (req, res) => {
@@ -41,11 +42,16 @@ export const updateFavorite = async (req, res) => {
       user.privateMetadata.favorites = [];
     }
 
-    const mongoUser = await User.findById(userId);
+    let mongoUser = await User.findById(userId);
     if (!mongoUser) {
-      return res
-        .status(404)
-        .json({ success: false, message: "User not found." });
+      // Auto-create user in MongoDB if not found
+      mongoUser = await User.create({
+        _id: userId,
+        name: user.firstName + " " + user.lastName,
+        email: user.emailAddresses[0].emailAddress,
+        image: user.imageUrl,
+        favorites: [],
+      });
     }
 
     let updatedFavorites;
@@ -98,11 +104,57 @@ export const getFavorites = async (req, res) => {
   }
 };
 
+// In-memory cache for now playing movie IDs
+let nowPlayingCache = { ids: null, timestamp: 0 };
+const CACHE_DURATION_MS = 5 * 60 * 1000; // 5 minutes
+
+async function getNowPlayingMovieIds() {
+  const now = Date.now();
+  if (
+    nowPlayingCache.ids &&
+    now - nowPlayingCache.timestamp < CACHE_DURATION_MS
+  ) {
+    return nowPlayingCache.ids;
+  }
+  let nowPlayingIds = new Set();
+  let page = 1;
+  let totalPages = 1;
+  const pagePromises = [];
+  // First, get total pages
+  const { data: firstPage } = await axios.get(
+    "https://api.themoviedb.org/3/movie/now_playing",
+    {
+      params: {
+        api_key: process.env.TMDB_API_KEY_V3,
+        page: 1,
+      },
+    }
+  );
+  totalPages = firstPage.total_pages;
+  pagePromises.push(Promise.resolve(firstPage));
+  for (let p = 2; p <= totalPages; p++) {
+    pagePromises.push(
+      axios
+        .get("https://api.themoviedb.org/3/movie/now_playing", {
+          params: {
+            api_key: process.env.TMDB_API_KEY_V3,
+            page: p,
+          },
+        })
+        .then((res) => res.data)
+    );
+  }
+  const allPages = await Promise.all(pagePromises);
+  allPages.forEach((pageData) => {
+    pageData.results.forEach((movie) => nowPlayingIds.add(movie.id));
+  });
+  nowPlayingCache = { ids: nowPlayingIds, timestamp: now };
+  return nowPlayingIds;
+}
+
 export const getRecommendations = async (req, res) => {
   try {
-    console.log("req.auth():", req.auth && req.auth()); // Debug log
     const userId = req.auth().userId;
-    console.log("userId from token:", userId); // Debug log
     const user = await User.findById(userId);
     if (!user) {
       return res
@@ -121,39 +173,95 @@ export const getRecommendations = async (req, res) => {
       .map((b) => b.show && b.show.movie)
       .filter(Boolean);
 
-    // Combine and deduplicate
-    const userMovieIds = [...new Set([...favoriteIds, ...bookedMovieIds])];
+    // Combine and deduplicate, limit to 5 for speed
+    const userMovieIds = [...new Set([...favoriteIds, ...bookedMovieIds])]
+      .slice(0, 5)
+      .map((id) => id.toString());
 
-    // Call Python microservice for recommendations
-    let recommendedMovieIds = [];
-    let recommendedMovies = [];
-    try {
-      const pyRes = await axios.post(
-        "https://test-repo-tenn.onrender.com/recommend",
-        { userMovieIds }
-      );
-      recommendedMovieIds = pyRes.data.recommendedMovieIds || [];
-      // Fetch full movie details for the recommended IDs
-      if (recommendedMovieIds.length > 0) {
-        recommendedMovies = await Movie.find({
-          _id: { $in: recommendedMovieIds },
-        });
-        // Sort movies in the same order as recommendedMovieIds
-        const movieMap = Object.fromEntries(
-          recommendedMovies.map((m) => [m._id.toString(), m])
-        );
-        recommendedMovies = recommendedMovieIds
-          .map((id) => movieMap[id])
-          .filter(Boolean);
-      }
-    } catch (err) {
-      console.error(
-        "Error calling Python recommender or fetching movies:",
-        err.message
-      );
+    // Fetch recommendations from TMDB for each favorite/booked movie in parallel
+    const recResults = await Promise.all(
+      userMovieIds.map((movieId) =>
+        axios
+          .get(
+            `https://api.themoviedb.org/3/movie/${movieId}/recommendations`,
+            {
+              params: { api_key: process.env.TMDB_API_KEY_V3 },
+            }
+          )
+          .then((res) => res.data.results)
+          .catch(() => [])
+      )
+    );
+    let recommendedMovieMap = {};
+    recResults.flat().forEach((rec) => {
+      if (rec && rec.id) recommendedMovieMap[rec.id] = rec;
+    });
+
+    // Remove movies already in user's favorites/bookings
+    for (const seenId of userMovieIds) {
+      delete recommendedMovieMap[parseInt(seenId)];
     }
 
-    res.json({ success: true, recommendedMovies });
+    // Get now playing movie IDs from TMDB (cached)
+    const nowPlayingIds = await getNowPlayingMovieIds();
+
+    // Filter recommendations to only include now playing movies
+    let recommendedMoviesArr = Object.values(recommendedMovieMap)
+      .filter((rec) => nowPlayingIds.has(rec.id))
+      .slice(0, 5); // Limit to 5 recommendations
+
+    // For each recommended movie, check if it has a show in DB
+    let recommendedMovies = await Promise.all(
+      recommendedMoviesArr.map(async (rec) => {
+        let movie = await Movie.findById(rec.id.toString());
+        let hasShow = false;
+        if (movie) {
+          const show = await Show.findOne({
+            movie: movie._id.toString(),
+            showDateTime: { $gte: new Date() },
+          });
+          hasShow = !!show;
+        }
+        // If not in DB, just use TMDB data and set hasShow false
+        return {
+          ...(movie ? movie.toObject() : rec),
+          hasShow,
+        };
+      })
+    );
+
+    // Ensure at least 2 bookable movies (hasShow === true)
+    let bookable = recommendedMovies.filter((m) => m.hasShow);
+    let comingSoon = recommendedMovies.filter((m) => !m.hasShow);
+    if (bookable.length < 2) {
+      // Query DB for more movies with active shows not already in recommendations or user favorites/bookings
+      const alreadyRecommendedIds = new Set(
+        recommendedMovies.map((m) => m._id?.toString() || m.id?.toString())
+      );
+      const extraShows = await Show.find({
+        showDateTime: { $gte: new Date() },
+      }).populate("movie");
+      for (const show of extraShows) {
+        const movieId =
+          show.movie?._id?.toString() || show.movie?.id?.toString();
+        if (
+          movieId &&
+          !alreadyRecommendedIds.has(movieId) &&
+          !userMovieIds.includes(movieId)
+        ) {
+          bookable.push({
+            ...(show.movie.toObject?.() || show.movie),
+            hasShow: true,
+          });
+          alreadyRecommendedIds.add(movieId);
+          if (bookable.length >= 2) break;
+        }
+      }
+    }
+    // Combine bookable and coming soon, limit to 5
+    const finalRecommendations = [...bookable, ...comingSoon].slice(0, 5);
+
+    res.json({ success: true, recommendedMovies: finalRecommendations });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
