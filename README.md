@@ -17,23 +17,4 @@ A full-stack Movie Ticket Booking Web Application built using the MERN stack (Mo
 ⚡ Fully Responsive & User-Friendly UI
 
 
-🛠️ Tech Stack
-Frontend
-React.js with Vite
-
-Tailwind CSS for styling
-
-Clerk for authentication
-
-Axios for API requests
-
-Backend
-Node.js + Express.js
-
-MongoDB with Mongoose
-
-Stripe API for payment gateway
-
-JWT (optional for internal API security)
-
 Clerk Webhooks for user event handling
