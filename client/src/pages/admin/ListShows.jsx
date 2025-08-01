@@ -8,16 +8,16 @@ import { useAppContext } from "../../context/AppContext";
 const ListShows = () => {
   const currency = import.meta.env.VITE_CURRENCY;
 
-  const {axios,getToken,user}=useAppContext()
+  const { axios, getToken, user } = useAppContext();
   const [shows, setShows] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const getAllShows = async () => {
     try {
-      const{ data }=await axios.get('/api/admin/all-shows',{
-        headers:{Authorization : `Bearer ${await getToken()}`}
+      const { data } = await axios.get("/api/admin/all-shows", {
+        headers: { Authorization: `Bearer ${await getToken()}` },
       });
-      setShows(data.shows)
+      setShows(data.shows);
       setLoading(false);
     } catch (error) {
       console.log(error);
@@ -25,10 +25,9 @@ const ListShows = () => {
   };
 
   useEffect(() => {
-    if(user){
+    if (user) {
       getAllShows();
     }
-   
   }, [user]);
 
   return !loading ? (
@@ -45,16 +44,27 @@ const ListShows = () => {
             </tr>
           </thead>
           <tbody className="text-sm font-light">
-            {shows.map((show,index)=>(
-              <tr key={index} className="border-b border-primary/10 bg-primary/5 even:bg-primary/10">
-                <td className="p-2 min-w-45 pl-5">{show?.movie?.title || "N/A" }</td>
+            {shows.map((show, index) => (
+              <tr
+                key={index}
+                className="border-b border-primary/10 bg-primary/5 even:bg-primary/10"
+              >
+                <td className="p-2 min-w-45 pl-5">
+                  {show?.movie?.title || "N/A"}
+                </td>
                 <td className="p-2">{dateFormat(show.showDateTime)}</td>
-                <td className="p-2">{Object.keys(show.occupiedSeats).length} </td>
-                <td className="p-2">{currency}{Object.keys(show.occupiedSeats).length*show.showPrice}</td>
+                <td className="p-2">
+                  {Object.keys(show.occupiedSeats).length}{" "}
+                </td>
+                <td className="p-2">
+                  {currency}
+                  {(
+                    Object.keys(show.occupiedSeats).length * show.showPrice || 0
+                  ).toLocaleString()}
+                </td>
               </tr>
             ))}
           </tbody>
-
         </table>
       </div>
     </>

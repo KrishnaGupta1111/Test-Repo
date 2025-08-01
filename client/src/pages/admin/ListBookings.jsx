@@ -71,7 +71,7 @@ const ListBookings = () => {
                 </td>
                 <td className="p-2">
                   {currency}
-                  {item.amount}
+                  {(item.amount || 0).toLocaleString()}
                 </td>
               </tr>
             ))}

@@ -10,28 +10,28 @@ import { Link } from "react-router-dom";
 const MyBookings = () => {
   const currency = import.meta.env.VITE_CURRENCY;
 
-  const {axios,getToken,user,image_base_url}=useAppContext()
+  const { axios, getToken, user, image_base_url } = useAppContext();
 
   const [bookings, setBookings] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const getMyBookings = async () => {
     try {
-      const {data}=await axios.get('/api/user/bookings',{
-       headers:{Authorization:`Bearer ${await getToken()}`} 
-      })
-      if(data.success){
-        setBookings(data.bookings)
+      const { data } = await axios.get("/api/user/bookings", {
+        headers: { Authorization: `Bearer ${await getToken()}` },
+      });
+      if (data.success) {
+        setBookings(data.bookings);
       }
     } catch (error) {
-       console.log(error)
+      console.log(error);
     }
     setIsLoading(false);
   };
 
   useEffect(() => {
-    if(user){
-    getMyBookings();
+    if (user) {
+      getMyBookings();
     }
   }, [user]);
 
@@ -69,13 +69,16 @@ const MyBookings = () => {
             <div className="flex items-center gap-4">
               <p className="text-2xl font-semibold mb-3">
                 {currency}
-                {item.amount}
+                {(item.amount || 0).toLocaleString()}
               </p>
-              {!item.isPaid  && 
-                <Link to={item.paymentLink} className="bg-primary px-4 py-1.5 mb-3 text-sm rounded-full font-medium cursor-pointer">
+              {!item.isPaid && (
+                <Link
+                  to={item.paymentLink}
+                  className="bg-primary px-4 py-1.5 mb-3 text-sm rounded-full font-medium cursor-pointer"
+                >
                   Pay Now
                 </Link>
-              }
+              )}
             </div>
             <div className="text-sm">
               <p>
