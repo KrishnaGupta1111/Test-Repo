@@ -33,7 +33,11 @@ const HeroSlider = () => {
         loop
         className="h-full custom-swiper-nav"
       >
-        {featured.map((movie, idx) => {
+        {featured.map((item, idx) => {
+          // Support both shapes: { movie: {...} } or movie fields on root
+          const movie = item?.movie ?? item ?? {};
+          const id = movie?._id || item?._id || idx;
+
           const title = movie?.title || "";
           const year = movie?.release_date
             ? new Date(movie.release_date).getFullYear()
@@ -44,9 +48,10 @@ const HeroSlider = () => {
           const runtimeText = timeFormat(movie?.runtime);
           const metaParts = [year, genresText, runtimeText].filter(Boolean);
           const bgPath = movie?.backdrop_path || movie?.poster_path || "";
+          const overview = movie?.overview || "";
 
           return (
-            <SwiperSlide key={movie._id || idx}>
+            <SwiperSlide key={id}>
               <div
                 className="flex flex-col items-center md:items-start gap-3 px-3 pt-10 pb-6 md:gap-4 md:px-16 lg:px-36 h-[60vh] md:h-[85vh] bg-cover overflow-visible transition-all duration-500 text-center md:text-left justify-end md:justify-center"
                 style={{
@@ -65,11 +70,12 @@ const HeroSlider = () => {
                   {metaParts.length > 0 && <span>{metaParts.join(" • ")}</span>}
                 </div>
                 <p className="max-w-xs sm:max-w-md md:max-w-md text-gray-300 whitespace-normal break-words text-xs sm:text-base md:text-base mt-2 md:mt-4">
-                  {movie?.overview || ""}
+                  {overview}
                 </p>
                 <button
                   onClick={() => {
-                    navigate(`/movies/${movie._id}`);
+                    const targetId = movie?._id || item?._id;
+                    if (targetId) navigate(`/movies/${targetId}`);
                     scrollTo(0, 0);
                   }}
                   className="flex items-center justify-center gap-1 px-4 py-2 sm:px-6 sm:py-3 text-xs sm:text-sm bg-primary hover:bg-primary-dull transition rounded-full font-medium cursor-pointer text-white mt-4 md:mt-6 w-full max-w-[200px]"
