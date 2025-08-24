@@ -18,6 +18,22 @@ const MovieCard = ({ movie }) => {
         ? movie.hasShow
         : false;
 
+  // Safe derived values to avoid runtime crashes in prod
+  const year = movie?.release_date
+    ? new Date(movie.release_date).getFullYear()
+    : "—";
+  const genresText = Array.isArray(movie?.genres)
+    ? movie.genres
+        .slice(0, 2)
+        .map((g) => g?.name)
+        .filter(Boolean)
+        .join(" | ")
+    : "";
+  const runtimeText =
+    typeof movie?.runtime === "number" && movie.runtime > 0
+      ? timeFormat(movie.runtime)
+      : "—";
+
   return (
     <div className="flex flex-col justify-between p-3 bg-gray-800 rounded-2xl shadow-md hover:-translate-y-0.5 transition duration-300 w-full h-full overflow-hidden border border-gray-700">
       <img
@@ -35,12 +51,9 @@ const MovieCard = ({ movie }) => {
       </p>
 
       <p className="text-xs text-gray-400 mt-1 mb-2">
-        {new Date(movie.release_date).getFullYear()} •{" "}
-        {movie.genres
-          .slice(0, 2)
-          .map((genre) => genre.name)
-          .join(" | ")} {" "}
-        • {timeFormat(movie.runtime)}
+        {year}
+        {genresText ? ` • ${genresText}` : ""}
+        {runtimeText !== "—" ? ` • ${runtimeText}` : ""}
       </p>
 
       <div className="flex items-center justify-between mt-auto pt-2 pb-1">
