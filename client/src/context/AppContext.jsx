@@ -23,7 +23,7 @@ export const AppProvider = ({ children }) => {
 
   const fetchIsAdmin = async () => {
     try {
-      const { data } = await axios.get("api/admin/is-admin", {
+      const { data } = await axios.get("/api/admin/is-admin", {
         headers: { Authorization: `Bearer ${await getToken()}` },
       });
       setIsAdmin(data.isAdmin);
@@ -86,22 +86,29 @@ export const AppProvider = ({ children }) => {
     }
   };
 
-  // Fetch recommended movies for the user
+  // Fetch recommended movies for the user with small retry/backoff
   const fetchRecommendedMovies = async () => {
-    try {
-      const { data } = await axios.get("/api/user/recommendations", {
-        headers: { Authorization: `Bearer ${await getToken()}` },
-      });
-      if (data.success) {
-        return data.recommendedMovies;
-      } else {
-        toast.error(data.message || "Failed to fetch recommendations");
-        return [];
+    const maxAttempts = 3;
+    let attempt = 0;
+    while (attempt < maxAttempts) {
+      try {
+        const { data } = await axios.get("/api/user/recommendations", {
+          headers: { Authorization: `Bearer ${await getToken()}` },
+          timeout: 9000,
+        });
+        if (data.success) return data.recommendedMovies;
+        // Non-success but 200
+        attempt++;
+        await new Promise((r) => setTimeout(r, 500 * attempt));
+      } catch (err) {
+        attempt++;
+        // brief backoff then retry
+        await new Promise((r) => setTimeout(r, 500 * attempt));
       }
-    } catch (error) {
-      toast.error("Failed to fetch recommendations");
-      return [];
     }
+    toast.error("Could not fetch recommendations. Showing popular shows instead.");
+    // Fallback to shows already in context
+    return shows.slice(0, 5);
   };
 
   useEffect(() => {

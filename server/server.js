@@ -111,7 +111,14 @@ app.get("/api/tmdb/movie/:id/videos", async (req, res) => {
     const { id } = req.params;
     const apiKey = process.env.TMDB_API_KEY_V3 || process.env.TMDB_API_KEY;
     const { data } = await axios.get(
-      `https://api.themoviedb.org/3/movie/${id}/videos?api_key=${apiKey}`
+      `https://api.themoviedb.org/3/movie/${id}/videos`,
+      {
+        params: {
+          api_key: apiKey,
+          include_video_language: "en,null",
+        },
+        timeout: 8000,
+      }
     );
     res.json(data);
   } catch (error) {

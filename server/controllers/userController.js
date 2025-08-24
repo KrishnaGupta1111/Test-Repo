@@ -6,6 +6,43 @@ import mongoose from "mongoose";
 import { getOrCreateMovie } from "./showController.js"; // Import the new function
 import axios from "axios";
 import Show from "../models/Show.js";
+import Redis from "ioredis";
+
+// Optional Redis client for caching
+let redis;
+try {
+  if (process.env.REDIS_URL) {
+    redis = new Redis(process.env.REDIS_URL, {
+      maxRetriesPerRequest: 3,
+      enableReadyCheck: true,
+    });
+    redis.on("error", (e) => console.warn("Redis error:", e.message));
+  }
+} catch (e) {
+  console.warn("Failed to init Redis:", e.message);
+}
+
+// Simple in-memory fallback cache helpers
+const memoryCache = new Map(); // key -> { value, expiresAt }
+const getFromCache = async (key) => {
+  try {
+    if (redis) {
+      const val = await redis.get(key);
+      if (val) return JSON.parse(val);
+    } else if (memoryCache.has(key)) {
+      const entry = memoryCache.get(key);
+      if (Date.now() < entry.expiresAt) return entry.value;
+      memoryCache.delete(key);
+    }
+  } catch {}
+  return null;
+};
+const setInCache = async (key, value, ttlSeconds = 600) => {
+  try {
+    if (redis) await redis.set(key, JSON.stringify(value), "EX", ttlSeconds);
+    else memoryCache.set(key, { value, expiresAt: Date.now() + ttlSeconds * 1000 });
+  } catch {}
+};
 
 //API Controller Function to Get User Bookings
 export const getUserBookings = async (req, res) => {
@@ -106,50 +143,45 @@ export const getFavorites = async (req, res) => {
 
 // In-memory cache for now playing movie IDs
 let nowPlayingCache = { ids: null, timestamp: 0 };
-const CACHE_DURATION_MS = 5 * 60 * 1000; // 5 minutes
+const CACHE_DURATION_MS = 5 * 60 * 1000; // 5 minutes (fallback only)
 
 async function getNowPlayingMovieIds() {
+  // Try Redis/memory cache first
+  const cacheKey = "tmdb:now_playing_ids:v1";
+  const cached = await getFromCache(cacheKey);
+  if (cached) return new Set(cached);
+
   const now = Date.now();
-  if (
-    nowPlayingCache.ids &&
-    now - nowPlayingCache.timestamp < CACHE_DURATION_MS
-  ) {
+  if (nowPlayingCache.ids && now - nowPlayingCache.timestamp < CACHE_DURATION_MS) {
     return nowPlayingCache.ids;
   }
-  let nowPlayingIds = new Set();
-  let page = 1;
-  let totalPages = 1;
-  const pagePromises = [];
-  // First, get total pages
-  const { data: firstPage } = await axios.get(
-    "https://api.themoviedb.org/3/movie/now_playing",
-    {
-      params: {
-        api_key: process.env.TMDB_API_KEY_V3,
-        page: 1,
-      },
-    }
-  );
-  totalPages = firstPage.total_pages;
-  pagePromises.push(Promise.resolve(firstPage));
-  for (let p = 2; p <= totalPages; p++) {
-    pagePromises.push(
-      axios
-        .get("https://api.themoviedb.org/3/movie/now_playing", {
-          params: {
-            api_key: process.env.TMDB_API_KEY_V3,
-            page: p,
-          },
-        })
-        .then((res) => res.data)
+  try {
+    const nowPlayingIds = new Set();
+    // Reduce API load: only fetch first N pages
+    const MAX_PAGES = 3;
+    const req = (page) =>
+      axios.get("https://api.themoviedb.org/3/movie/now_playing", {
+        params: { api_key: process.env.TMDB_API_KEY_V3, page },
+        timeout: 8000,
+      });
+    const first = await req(1).then((r) => r.data);
+    const totalPages = Math.min(first.total_pages || 1, MAX_PAGES);
+    const others = await Promise.all(
+      Array.from({ length: totalPages - 1 }, (_, i) => req(i + 2).then((r) => r.data)).map((p) =>
+        p.catch(() => ({ results: [] }))
+      )
     );
+    [first, ...others].forEach((pageData) => {
+      (pageData.results || []).forEach((m) => nowPlayingIds.add(m.id));
+    });
+    nowPlayingCache = { ids: nowPlayingIds, timestamp: now };
+    // Cache for 10 minutes
+    await setInCache(cacheKey, Array.from(nowPlayingIds), 600);
+    return nowPlayingIds;
+  } catch {
+    // On any failure, return empty set so flow continues
+    return new Set();
   }
-  const allPages = await Promise.all(pagePromises);
-  allPages.forEach((pageData) => {
-    pageData.results.forEach((movie) => nowPlayingIds.add(movie.id));
-  });
-  nowPlayingCache = { ids: nowPlayingIds, timestamp: now };
-  return nowPlayingIds;
 }
 
 export const getRecommendations = async (req, res) => {
@@ -178,16 +210,32 @@ export const getRecommendations = async (req, res) => {
       .slice(0, 5)
       .map((id) => id.toString());
 
+    // If user has no history, fallback directly to active shows (fast path)
+    if (userMovieIds.length === 0) {
+      const extraShows = await Show.find({ showDateTime: { $gte: new Date() } })
+        .populate("movie")
+        .limit(10);
+      const fallback = [];
+      const seen = new Set();
+      for (const show of extraShows) {
+        const movie = show.movie?.toObject?.() || show.movie;
+        if (movie && !seen.has(movie._id?.toString())) {
+          seen.add(movie._id?.toString());
+          fallback.push({ ...movie, hasShow: true });
+        }
+        if (fallback.length >= 5) break;
+      }
+      return res.json({ success: true, recommendedMovies: fallback });
+    }
+
     // Fetch recommendations from TMDB for each favorite/booked movie in parallel
     const recResults = await Promise.all(
       userMovieIds.map((movieId) =>
         axios
-          .get(
-            `https://api.themoviedb.org/3/movie/${movieId}/recommendations`,
-            {
-              params: { api_key: process.env.TMDB_API_KEY_V3 },
-            }
-          )
+          .get(`https://api.themoviedb.org/3/movie/${movieId}/recommendations`, {
+            params: { api_key: process.env.TMDB_API_KEY_V3 },
+            timeout: 8000,
+          })
           .then((res) => res.data.results)
           .catch(() => [])
       )
@@ -258,11 +306,30 @@ export const getRecommendations = async (req, res) => {
         }
       }
     }
+
     // Combine bookable and coming soon, limit to 5
     const finalRecommendations = [...bookable, ...comingSoon].slice(0, 5);
 
     res.json({ success: true, recommendedMovies: finalRecommendations });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    // Last-resort fallback: recommend from active shows to avoid flakiness
+    try {
+      const shows = await Show.find({ showDateTime: { $gte: new Date() } })
+        .populate("movie")
+        .limit(10);
+      const unique = [];
+      const seen = new Set();
+      for (const show of shows) {
+        const m = show.movie?.toObject?.() || show.movie;
+        if (m && !seen.has(m._id?.toString())) {
+          seen.add(m._id?.toString());
+          unique.push({ ...m, hasShow: true });
+        }
+        if (unique.length >= 5) break;
+      }
+      return res.json({ success: true, recommendedMovies: unique });
+    } catch (e) {
+      return res.status(500).json({ success: false, message: error.message });
+    }
   }
 };

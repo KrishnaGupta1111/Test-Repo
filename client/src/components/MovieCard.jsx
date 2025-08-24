@@ -19,7 +19,7 @@ const MovieCard = ({ movie }) => {
         : false;
 
   return (
-    <div className="flex flex-col justify-between p-2 bg-gray-800 rounded-2xl shadow-md hover:translate-y-1 transition duration-300 w-[112%] mx-auto mb-4 sm:w-66 border border-gray-700">
+    <div className="flex flex-col justify-between p-3 bg-gray-800 rounded-2xl shadow-md hover:-translate-y-0.5 transition duration-300 w-full h-full overflow-hidden border border-gray-700">
       <img
         onClick={() => {
           navigate(`/movies/${movie._id}`);
@@ -39,7 +39,7 @@ const MovieCard = ({ movie }) => {
         {movie.genres
           .slice(0, 2)
           .map((genre) => genre.name)
-          .join(" | ")}{" "}
+          .join(" | ")} {" "}
         • {timeFormat(movie.runtime)}
       </p>
 
