@@ -152,7 +152,7 @@ export const addShow = async (req, res) => {
 export const getShows = async (req, res) => {
   try {
     // Try cache first
-    const cacheKey = "shows:active:minified:v1";
+    const cacheKey = "shows:active:minified:v2"; // bump to include more fields
     const cached = await getFromCache(cacheKey);
     if (cached) {
       return res.json({ success: true, shows: cached });
@@ -175,6 +175,9 @@ export const getShows = async (req, res) => {
           backdrop_path: m.backdrop_path,
           vote_average: m.vote_average,
           release_date: m.release_date,
+          overview: m.overview || "",
+          genres: Array.isArray(m.genres) ? m.genres : [],
+          runtime: typeof m.runtime === "number" ? m.runtime : null,
           hasShow: true,
         });
       }
