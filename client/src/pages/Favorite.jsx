@@ -11,19 +11,20 @@ const Favorite = () => {
   const showMovieIds = new Set(shows.map((m) => m._id));
 
   return favoriteMovies.length > 0 ? (
-    <div className="relative my-40 mb-60 px-6 md:px-16 lg:px-40 xl:px-44 overflow-hidden min-h-[80vh]">
+    <div className="relative my-24 md:my-32 px-4 sm:px-6 md:px-10 lg:px-16 xl:px-24 overflow-hidden min-h-[70vh]">
       <BlurCircle top="150px" left="0px" />
       <BlurCircle bottom="50px" right="50px" />
 
-      <h1 className="text-lg font-medium my-4">Your Favorite Movies</h1>
-      <div className="flex flex-wrap max-sm:justify-center gap-8">
+      <h1 className="text-lg font-medium mt-2 mb-4">Your Favorite Movies</h1>
+      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4 sm:gap-6 lg:gap-8 place-items-stretch">
         {favoriteMovies.map((movie) => (
-          <MovieCard
-            movie={
-              showMovieIds.has(movie._id) ? { ...movie, hasShow: true } : movie
-            }
-            key={movie._id}
-          />
+          <div key={movie._id} className="w-full min-w-0">
+            <MovieCard
+              movie={
+                showMovieIds.has(movie._id) ? { ...movie, hasShow: true } : movie
+              }
+            />
+          </div>
         ))}
       </div>
     </div>

@@ -2,6 +2,50 @@ import axios from "axios";
 import Movie from "../models/Movie.js";
 import Show from "../models/Show.js";
 import { inngest } from "../inngest/index.js";
+import Redis from "ioredis";
+
+// Optional Redis client for caching
+let redis;
+try {
+  if (process.env.REDIS_URL) {
+    redis = new Redis(process.env.REDIS_URL, {
+      maxRetriesPerRequest: 3,
+      enableReadyCheck: true,
+    });
+    redis.on("error", (e) => console.warn("Redis error:", e.message));
+  }
+} catch (e) {
+  console.warn("Failed to init Redis:", e.message);
+}
+
+// Simple in-memory fallback cache
+const memoryCache = new Map(); // key -> { value, expiresAt }
+const getFromCache = async (key) => {
+  try {
+    if (redis) {
+      const data = await redis.get(key);
+      if (data) return JSON.parse(data);
+    } else if (memoryCache.has(key)) {
+      const entry = memoryCache.get(key);
+      if (Date.now() < entry.expiresAt) return entry.value;
+      memoryCache.delete(key);
+    }
+  } catch (e) {
+    // ignore cache errors
+  }
+  return null;
+};
+const setInCache = async (key, value, ttlSeconds = 120) => {
+  try {
+    if (redis) {
+      await redis.set(key, JSON.stringify(value), "EX", ttlSeconds);
+    } else {
+      memoryCache.set(key, { value, expiresAt: Date.now() + ttlSeconds * 1000 });
+    }
+  } catch (e) {
+    // ignore cache errors
+  }
+};
 
 // Reusable function to get a movie from DB or create it from TMDB
 export const getOrCreateMovie = async (movieId) => {
@@ -107,6 +151,13 @@ export const addShow = async (req, res) => {
 
 export const getShows = async (req, res) => {
   try {
+    // Try cache first
+    const cacheKey = "shows:active:minified:v1";
+    const cached = await getFromCache(cacheKey);
+    if (cached) {
+      return res.json({ success: true, shows: cached });
+    }
+
     const shows = await Show.find({ showDateTime: { $gte: new Date() } })
       .populate("movie")
       .sort({ showDateTime: 1 });
@@ -115,14 +166,24 @@ export const getShows = async (req, res) => {
     const movieMap = new Map();
     shows.forEach((show) => {
       if (show.movie && !movieMap.has(show.movie._id.toString())) {
+        // Minify the payload by only sending fields used on Home/Movies pages
+        const m = show.movie.toObject?.() || show.movie;
         movieMap.set(show.movie._id.toString(), {
-          ...(show.movie.toObject?.() || show.movie),
+          _id: m._id,
+          title: m.title,
+          poster_path: m.poster_path,
+          backdrop_path: m.backdrop_path,
+          vote_average: m.vote_average,
+          release_date: m.release_date,
           hasShow: true,
         });
       }
     });
 
-    res.json({ success: true, shows: Array.from(movieMap.values()) });
+    const result = Array.from(movieMap.values());
+    // Save to cache for 2 minutes
+    await setInCache(cacheKey, result, 120);
+    res.json({ success: true, shows: result });
   } catch (error) {
     console.log(error);
     res.json({ success: false, message: error.message });

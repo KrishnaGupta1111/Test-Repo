@@ -21,16 +21,18 @@ const Movies = () => {
   }, [axios]);
 
   return shows?.length > 0 ? (
-    <div className="relative my-40 mb-60 px-0 sm:px-2 md:px-16 lg:px-40 xl:px-44 overflow-hidden min-h-[80vh]">
+    <div className="relative my-24 md:my-32 px-4 sm:px-6 md:px-10 lg:px-16 xl:px-24 overflow-hidden min-h-[70vh]">
       <BlurCircle top="150px" left="0px" />
       <BlurCircle bottom="50px" right="50px" />
 
-      <h1 className="text-lg font-medium my-4">Now Showing</h1>
-      <div className="grid grid-cols-2 max-sm:grid-cols-2 md:flex flex-wrap justify-center gap-4">
+      <h1 className="text-lg font-medium mt-2 mb-4">Now Showing</h1>
+      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4 sm:gap-6 lg:gap-8 place-items-stretch">
         {shows
           .filter((movie) => movie && movie._id)
           .map((movie) => (
-            <MovieCard movie={movie} key={movie._id} />
+            <div key={movie._id} className="w-full min-w-0">
+              <MovieCard movie={movie} />
+            </div>
           ))}
       </div>
     </div>

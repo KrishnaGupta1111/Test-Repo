@@ -60,20 +60,27 @@ const MovieDetails = () => {
   };
 
   // Helper to fetch trailer from backend proxy
+  const pickBestYoutube = (results = []) => {
+    const onlyYT = results.filter((v) => v.site === "YouTube" && v.key);
+    const byType = (t) => onlyYT.find((v) => v.type === t);
+    return (
+      byType("Trailer") ||
+      byType("Teaser") ||
+      byType("Clip") ||
+      onlyYT[0] ||
+      null
+    );
+  };
+
   const fetchTrailerUrl = async (tmdbId) => {
     try {
       setTrailerLoading(true);
       setTrailerUrl(null);
-      const res = await fetch(`/api/tmdb/movie/${tmdbId}/videos`);
-      const data = await res.json();
-      const trailer =
-        data.results &&
-        data.results.find(
-          (vid) => vid.type === "Trailer" && vid.site === "YouTube"
-        );
-      setTrailerUrl(
-        trailer ? `https://www.youtube.com/watch?v=${trailer.key}` : null
-      );
+      const { data } = await axios.get(`/api/tmdb/movie/${tmdbId}/videos`, {
+        timeout: 9000,
+      });
+      const chosen = pickBestYoutube(data?.results || []);
+      setTrailerUrl(chosen ? `https://www.youtube.com/watch?v=${chosen.key}` : null);
     } catch {
       setTrailerUrl(null);
     } finally {
@@ -197,9 +204,11 @@ const MovieDetails = () => {
       <DateSelect dateTime={show.dateTime} id={id} />
 
       <p className="text-lg font-medium mt-20 mb-8">You May Also Like</p>
-      <div className="flex flex-wrap max-sm:justify-center gap-8">
-        {shows.slice(0, 4).map((movie, index) => (
-          <MovieCard key={index} movie={movie} />
+      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4 sm:gap-6 lg:gap-8">
+        {shows.slice(0, 8).map((movie, index) => (
+          <div key={index} className="w-full min-w-0">
+            <MovieCard movie={movie} />
+          </div>
         ))}
       </div>
       <div className="flex justify-center mt-20">

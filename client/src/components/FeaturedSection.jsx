@@ -11,8 +11,8 @@ const FeaturedSection = () => {
   const { shows } = useAppContext();
 
   return (
-    <div className="px-6 md:px-16 lg:px-24 xl:px-44 overflow-hidden">
-      <div className="relative flex items-center justify-between pt-20 pb-10">
+    <div className="px-4 sm:px-6 md:px-10 lg:px-16 xl:px-24 overflow-hidden">
+      <div className="relative flex items-center justify-between pt-12 md:pt-20 pb-6 md:pb-10">
         <BlurCircle top="0" right="-80px" />
         <p className="text-gray-300 font-medium text-lg">Now Showing</p>
         <button
@@ -24,9 +24,11 @@ const FeaturedSection = () => {
         </button>
       </div>
 
-      <div className="grid grid-cols-2 max-sm:grid-cols-2 md:flex flex-wrap max-sm:justify-center gap-8 mt-8">
-        {shows.slice(0, 8).map((show) => (
-          <MovieCard key={show._id} movie={show} />
+      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6 lg:gap-8 mt-4 md:mt-8 place-items-stretch">
+        {shows.slice(0, 10).map((show) => (
+          <div key={show._id} className="w-full">
+            <MovieCard movie={show} />
+          </div>
         ))}
       </div>
 
